@@ -31,13 +31,18 @@ module Chewy
 
           ActiveSupport::Notifications.instrument 'import_objects.chewy', type: self do |payload|
             adapter.import(*args, import_options) do |action_objects|
-              indexed_objects = build_root.parent_id && fetch_indexed_objects(action_objects.values.flatten)
-              body = bulk_body(action_objects, indexed_objects)
+              errors = nil
+              ActiveSupport::Notifications.instrument 'batch.import_objects.chewy', type: self do |batch_payload|
+                indexed_objects = build_root.parent_id && fetch_indexed_objects(action_objects.values.flatten)
+                body = bulk_body(action_objects, indexed_objects)
 
-              errors = bulk(bulk_options.merge(body: body)) if body.present?
+                errors = bulk(bulk_options.merge(body: body)) if body.present?
 
-              fill_payload_import payload, action_objects
-              fill_payload_errors payload, errors if errors.present?
+                fill_payload_import payload, action_objects
+                fill_payload_errors payload, errors if errors.present?
+                batch_payload[:import] = payload[:import]
+                batch_payload[:errors] = payload[:errors]
+              end
               !errors.present?
             end
           end

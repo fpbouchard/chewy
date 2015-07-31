@@ -186,6 +186,26 @@ describe Chewy::Type::Import do
         expect(outer_payload).to eq({type: CitiesIndex::City, import: {index: 3}})
       end
 
+      specify do
+        calls = 0
+        ActiveSupport::Notifications.subscribe('batch.import_objects.chewy') do |name, start, finish, id, payload|
+          calls += 1
+        end
+
+        city.import dummy_cities
+        expect(calls).to eq(1)
+      end
+
+      specify do
+        calls = 0
+        ActiveSupport::Notifications.subscribe('batch.import_objects.chewy') do |name, start, finish, id, payload|
+          calls += 1
+        end
+
+        city.import dummy_cities, batch_size: 2
+        expect(calls).to eq(2)
+      end
+
       context do
         before do
           stub_index(:cities) do
